@@ -1,58 +1,76 @@
 #!/bin/env node
-//  OpenShift sample Node application
-var express = require('express');
-var fs      = require('fs');
+//  OpenShift Federated Wiki Quickstart
+//
+// Federated Wiki is install as an npm package, see package.json
+// This is just a wrapper to get the parameters that are needed, and get it started
 
+var fs = require('fs');
+var path = require('path');
 
-/**
- *  Define the sample application.
- */
-var SampleApp = function() {
+// required as we will be requiring cli.coffee from the wiki package to run the wiki
+require('coffee-script');
+require('coffee-script/register')
 
-    //  Scope.
+// The wiki wrapper just uses the OpenShift environment variables to create a config.json file,
+// and the starts the wiki.
+
+var WikiWrapper = function() {
+
+    // Scope.
     var self = this;
 
-
-    /*  ================================================================  */
-    /*  Helper functions.                                                 */
-    /*  ================================================================  */
-
-    /**
-     *  Set up server IP address and port # using env variables/defaults.
-     */
+    // Set up variables.
     self.setupVariables = function() {
-        //  Set the environment variables we need.
+        // IP address and port
         self.ipaddress = process.env.OPENSHIFT_NODEJS_IP;
-        self.port      = process.env.OPENSHIFT_NODEJS_PORT || 8080;
+        self.port = process.env.OPENSHIFT_NODEJS_PORT || 8080;
 
         if (typeof self.ipaddress === "undefined") {
-            //  Log errors on OpenShift but continue w/ 127.0.0.1 - this
-            //  allows us to run/test the app locally.
+            // Log errors but continue with 127.0.0.1 - to
+            // allow us to run/test locally.
             console.warn('No OPENSHIFT_NODEJS_IP var, using 127.0.0.1');
             self.ipaddress = "127.0.0.1";
-        };
-    };
-
-
-    /**
-     *  Populate the cache.
-     */
-    self.populateCache = function() {
-        if (typeof self.zcache === "undefined") {
-            self.zcache = { 'index.html': '' };
         }
 
-        //  Local cache for static content.
-        self.zcache['index.html'] = fs.readFileSync('./index.html');
+        // Application URL - used by the Persona authentication
+        self.url = "http://" + process.env.OPENSHIFT_APP_DNS;
+
+        // Datastore options
+
+        // Data Directory - provides persistent storage.
+        self.data = process.env.OPENSHIFT_DATA_DIR;
+
+        // Storetype, uncomment as required:
+        //   1. flatfiles - no extra config required.
+        //   2. leveldb
+        /*
+        self.database = '{"type": "leveldb"}';
+        */
+        //   3. mongodb - requires additional OpenShift cartridge (see README)
+        //              - the connection string will need modifying if connecting with
+        //                a database that is elsewhere.
+        /*
+        if (process.env.OPENSHIFT_MONGODB_DB_URL) {
+          self.connection_string = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ":" + process.env.OPENSHIFT_MONGODB_DB_PASSWORD + "@" + process.env.OPENSHIFT_MONGODB_DB_HOST + ':' + process.env.OPENSHIFT_MONGODB_DB_PORT + '/' + process.env.OPENSHIFT_APP_NAME;
+            self.database = '{"type": "mongodb", "url": "' + self.connection_string + '" }';
+        }
+        */
+        //   4. redis - requires custom OpenShift cartridge
+        // to be added later...
+
+        // Wiki Farm
+
+        /*
+        self.farm = true;
+        self.farmPort = 20000;
+        */
+
+        // Upload Limit
+        self.uploadLimit = '5mb'
+
     };
 
-
-    /**
-     *  Retrieve entry (content) from cache.
-     *  @param {string} key  Key identifying content to retrieve from cache.
-     */
-    self.cache_get = function(key) { return self.zcache[key]; };
-
+    // terminator and setupTerminationHandlers are straight from the sample app...
 
     /**
      *  terminator === the termination handler
@@ -61,7 +79,7 @@ var SampleApp = function() {
      */
     self.terminator = function(sig){
         if (typeof sig === "string") {
-           console.log('%s: Received %s - terminating sample app ...',
+           console.log('%s: Received %s - terminating wiki ...',
                        Date(Date.now()), sig);
            process.exit(1);
         }
@@ -84,76 +102,56 @@ var SampleApp = function() {
         });
     };
 
-
-    /*  ================================================================  */
-    /*  App server functions (main app logic here).                       */
-    /*  ================================================================  */
-
-    /**
-     *  Create the routing table entries + handlers for the application.
-     */
-    self.createRoutes = function() {
-        self.routes = { };
-
-        self.routes['/asciimo'] = function(req, res) {
-            var link = "http://i.imgur.com/kmbjB.png";
-            res.send("<html><body><img src='" + link + "'></body></html>");
-        };
-
-        self.routes['/'] = function(req, res) {
-            res.setHeader('Content-Type', 'text/html');
-            res.send(self.cache_get('index.html') );
-        };
-    };
-
-
-    /**
-     *  Initialize the server (express) and create the routes and register
-     *  the handlers.
-     */
-    self.initializeServer = function() {
-        self.createRoutes();
-        self.app = express.createServer();
-
-        //  Add handlers for the app (from the routes).
-        for (var r in self.routes) {
-            self.app.get(r, self.routes[r]);
-        }
-    };
-
-
-    /**
-     *  Initializes the sample application.
-     */
+    // Initializes the application.
     self.initialize = function() {
         self.setupVariables();
-        self.populateCache();
+
+        // do we already have a config file?
+        if (fs.existsSync(path.join(process.env.OPENSHIFT_REPO_DIR, "config.json"))) {
+            // remove the config file and create it afresh
+            fs.unlinkSync(path.join(process.env.OPENSHIFT_REPO_DIR, "config.json"))
+        }
+
+        // create config file
+        self.wikiOptions = {
+            url: self.url,
+            port: self.port,
+            data: self.data,
+            host: self.ipaddress,
+            uploadLimit: self.uploadLimit
+        };
+
+        // if using anything other than flatfiles, add database to options
+        if (!(typeof self.database === "undefined")) {
+            self.wikiOptions.database = self.database
+        }
+
+        // if using farm mode, add farm and farmport to options
+        if (!(typeof self.farm === "undefined")) {
+          self.wikiOptions.farm = self.farm;
+          self.wikiOptions.farmPort = self.farmPort;
+        }
+
+        // convert to string, and save it
+        self.wikiConfig = JSON.stringify(self.wikiOptions);
+
+        fs.writeFileSync(path.join(process.env.OPENSHIFT_REPO_DIR, "config.json"), self.wikiConfig);
+
         self.setupTerminationHandlers();
-
-        // Create the express server and routes.
-        self.initializeServer();
     };
 
-
-    /**
-     *  Start the server (starts up the sample application).
-     */
+    // Start the wiki
     self.start = function() {
-        //  Start the app on the specific interface (and port).
-        self.app.listen(self.port, self.ipaddress, function() {
-            console.log('%s: Node server started on %s:%d ...',
-                        Date(Date.now() ), self.ipaddress, self.port);
-        });
+        // start the wiki...
+
+        require('./cli');
     };
 
-};   /*  Sample Application.  */
-
-
+};
 
 /**
  *  main():  Main code.
  */
-var zapp = new SampleApp();
+var zapp = new WikiWrapper();
 zapp.initialize();
 zapp.start();
-
