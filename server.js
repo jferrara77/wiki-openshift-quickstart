@@ -63,7 +63,7 @@ var WikiWrapper = function() {
         self.farm = true;
         self.farmPort = 20000;
         
-	//autoseed sites on same farm to eachother
+	//autoseed sites on same farm to eachother FIXME: don't think these have any effect...fuck me
 	self.autoseed = true;
 	self.neighbors = 'fedwiki1.metaweb.co, fedwiki2.metaweb.co';
 
@@ -132,6 +132,7 @@ var WikiWrapper = function() {
         if (!(typeof self.farm === "undefined")) {
           self.wikiOptions.farm = self.farm;
           self.wikiOptions.farmPort = self.farmPort;
+          self.wikiOptions.neighbors = self.neighbors;
         }
 
         // convert to string, and save it
