@@ -59,11 +59,12 @@ var WikiWrapper = function() {
         // to be added later...
 
         // Wiki Farm
-
         
         self.farm = true;
         self.farmPort = 20000;
         
+	//autoseed sites on same farm to eachother
+	self.autoseed = true;
 
         // Upload Limit
         self.uploadLimit = '5mb'
