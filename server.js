@@ -132,6 +132,7 @@ var WikiWrapper = function() {
         if (!(typeof self.farm === "undefined")) {
           self.wikiOptions.farm = self.farm;
           self.wikiOptions.farmPort = self.farmPort;
+          self.wikiOptions.autoseed = self.autoseed;
           self.wikiOptions.neighbors = self.neighbors;
         }
 
