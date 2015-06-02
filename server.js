@@ -65,6 +65,7 @@ var WikiWrapper = function() {
         
 	//autoseed sites on same farm to eachother
 	self.autoseed = true;
+	self.neighbors = {'http://fedwiki1.metaweb.co', 'http://fedwiki2.metaweb.co'};
 
         // Upload Limit
         self.uploadLimit = '5mb'
