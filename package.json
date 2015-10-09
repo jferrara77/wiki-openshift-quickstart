@@ -22,8 +22,6 @@
     "config-chain": "1.1",
     "glob": "4.0",
     "optimist": "0.6",
-    "wiki-server": "0.4",
-    "wiki-client": "0.3",
     "wiki-plugin-activity": "0.1.0 - 0.2.9999",
     "wiki-plugin-bars": "0.1.0 - 0.2.9999",
     "wiki-plugin-bytebeat": "0.1.0 - 0.2.9999",
