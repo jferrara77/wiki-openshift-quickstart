@@ -1,0 +1,91 @@
+digraph call_graph {
+	node [style=filled; fillcolor=white; color=white];
+	subgraph [style=filled; fillcolor=lightgray];
+
+	ready [shape=box];
+	ready -> begin;
+
+	subgraph cluster_page {
+		fillcolor=palegreen;
+		label = "page";
+		newPage;
+		become;
+	}
+
+	subgraph cluster_lineup {
+		fillcolor=palegreen;
+		label = "lineup";
+		addPage [label="add\npage"];
+		removeKey [label="remove\nkey"];
+		removeAllAfter [label="remove\nall\nafter"];
+	}
+
+	subgraph cluster_link {
+		label = "link";
+		fillcolor=palegreen;
+		doInternalLink [label="internal\nlink"];
+		createPage [label="create\npage"];
+		doInternalLink -> createPage;
+
+	}
+
+	subgraph cluster_legacy {
+		label = "legacy";
+		click_create_button [label="create\nbutton"];
+		begin;
+	}
+	begin -> first;
+	begin -> cycle;
+	doInternalLink -> cycle;
+	doInternalLink -> removeAllAfter;
+	click_create_button -> get;
+	click_create_button -> become;
+	click_create_button -> put;
+	click_create_button -> rebuildPage;
+	
+
+	createPage -> page;
+	page [shape=box]
+	
+	subgraph cluster_pageHandler {
+		label = "pageHandler";
+		get -> trouble; put;
+	}
+	get -> newPage;
+	trouble -> newPage;
+	
+
+	subgraph cluster_refresh {
+		label = "refresh";
+		buildPage [label="build\npage"]
+		rebuildPage [label="rebuild\npage"]
+		cycle -> missing -> buildPage -> rebuildPage;
+	}
+	missing -> newPage;
+	cycle -> get;
+	cycle -> buildPage;
+	buildPage -> addPage;
+	rebuildPage -> story; story[shape=box];
+	rebuildPage -> journal; journal[shape=box];
+	
+
+	subgraph cluster_search {
+		label = "search";
+		performSearch [label="perform\nsearch"];
+	}
+	performSearch -> newPage;
+	performSearch -> createPage;
+	performSearch -> buildPage;
+
+
+	subgraph cluster_state {
+		label = "state";
+		show; first;
+	}
+	show -> cycle;
+	show -> createPage;
+	show -> removeKey;
+	first -> createPage;
+
+
+}
